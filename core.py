@@ -29,6 +29,76 @@ nnfs.init()
 #         # Normalize gradient
 #         self.dinputs = self.dinputs / samples
 
+class Optimizer_Adam:
+    """
+    learning_rate=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-7
+    """
+    def __init__(self, learning_rate=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-7):
+        self.learning_rate = learning_rate
+        self.beta_1 = beta_1
+        self.beta_2 = beta_2
+        self.epsilon = epsilon
+        self.iterations = 0
+
+    def update_params(self, layer):
+        # If layer does not have momentums/ cache arrays, create them
+        if not hasattr(layer, 'weight_momentums'):
+            layer.weight_momentums = np.zeros_like(layer.weights)
+            layer.weight_cache = np.zeros_like(layer.weights)
+            layer.bias_momentums = np.zeros_like(layer.biases)
+            layer.bias_cache = np.zeros_like(layer.biases)
+
+        # Update momentum with current gradients
+        layer.weight_momentums = (
+            self.beta_1 * layer.weight_momentums
+            + (1 - self.beta_1) * layer.dweights
+        )
+        layer.bias_momentums = (
+            self.beta_1 * layer.bias_momentums
+            + (1 - self.beta_1) * layer.dbiases
+        )
+
+        # Corrected momentums
+        weight_momentums_corrected = (
+            layer.weight_momentums
+            / (1 - self.beta_1 ** (self.iterations + 1))
+        )
+        bias_momentums_corrected = (
+            layer.bias_momentums
+            / (1 - self.beta_1 ** (self.iterations + 1))
+        )
+
+        # Update cache with squared gradients
+        layer.weight_cache = (
+            self.beta_2 * layer.weight_cache
+            + (1 - self.beta_2) * (layer.dweights ** 2)
+        )
+        layer.bias_cache = (
+            self.beta_2 * layer.bias_cache
+            + (1 - self.beta_2) * (layer.dbiases ** 2)
+        )
+
+        # Corrected cache
+        weight_cache_corrected = (
+            layer.weight_cache
+            / (1 - self.beta_2 ** (self.iterations + 1))
+        )
+        bias_cache_corrected = (
+            layer.bias_cache
+            / (1 - self.beta_2 ** (self.iterations + 1))
+        )
+
+        # Vanilla Adam parameter update
+        layer.weights -= self.learning_rate * weight_momentums_corrected / (
+            np.sqrt(weight_cache_corrected) + self.epsilon
+        )
+        layer.biases -= self.learning_rate * bias_momentums_corrected / (
+            np.sqrt(bias_cache_corrected) + self.epsilon
+        )
+
+    def post_update_params(self):
+        # Increment iteration after updating
+        self.iterations += 1
 
 class Layer_Dense:
     def __init__(self, n_inputs, n_neurons):
@@ -98,9 +168,11 @@ class Loss_crossentropy(Loss):
         # If labels are sparse, turn them into one-hot vector
         if len(y_true.shape) == 1:
             y_true = np.eye(labels)[y_true]
+            
+        dvalues_clipped = np.clip(dvalues, 1e-7, 1 - 1e-7)
         
         # Calculate gradient
-        self.dinputs = -y_true / dvalues
+        self.dinputs = -y_true / dvalues_clipped
         # Normalize
         self.dinputs = self.dinputs / samples
         
@@ -108,17 +180,20 @@ class Loss_crossentropy(Loss):
 X, Y = spiral_data(100, 3)
 
 # Create layers
-dense1 = Layer_Dense(2, 3)
+dense1 = Layer_Dense(2, 64)    # 64 neurons
 activation1 = Activation_ReLU()
 
-dense2 = Layer_Dense(3, 3)
-activation2 = Activation_Softmax()
+dense2 = Layer_Dense(64, 64)   # second hidden layer
+activation2 = Activation_ReLU()
+
+dense3 = Layer_Dense(64, 3)    # output layer
+activation3 = Activation_Softmax()
 
 # Loss function
 loss_function = Loss_crossentropy()
+optimizer = Optimizer_Adam(learning_rate=0.01)
 
 # Training params
-learning_rate = 0.1
 epochs = 10001
 
 for epoch in range(epochs):
@@ -128,12 +203,15 @@ for epoch in range(epochs):
 
     dense2.forward(activation1.output)
     activation2.forward(dense2.output)
+    
+    dense3.forward(activation2.output)
+    activation3.forward(dense3.output)
 
     # Compute loss
-    loss = loss_function.calculate(activation2.output, Y)
+    loss = loss_function.calculate(activation3.output, Y)
 
     # (Optional) measure accuracy
-    predictions = np.argmax(activation2.output, axis=1)
+    predictions = np.argmax(activation3.output, axis=1)
     if len(Y.shape) == 2:
         Y_labels = np.argmax(Y, axis=1)
     else:
@@ -146,18 +224,20 @@ for epoch in range(epochs):
 
     # Backward pass
     # 1) Loss backward
-    loss_function.backward(activation2.output, Y)
+    loss_function.backward(activation3.output, Y)
     # 2) Softmax backward
-    activation2.backward(loss_function.dinputs)
+    activation3.backward(loss_function.dinputs)
     # 3) Dense2 backward
-    dense2.backward(activation2.dinputs)
+    dense3.backward(activation3.dinputs)
     # 4) ReLU backward
-    activation1.backward(dense2.dinputs)
+    activation2.backward(dense3.dinputs)
     # 5) Dense1 backward
-    dense1.backward(activation1.dinputs)
+    dense2.backward(activation2.dinputs)
+    activation1.backward(dense2.dinputs)
 
-    # Update weights and biases
-    dense1.weights -= learning_rate * dense1.dweights
-    dense1.biases  -= learning_rate * dense1.dbiases
-    dense2.weights -= learning_rate * dense2.dweights
-    dense2.biases  -= learning_rate * dense2.dbiases
+    dense1.backward(activation1.dinputs)
+    
+    optimizer.update_params(dense1)
+    optimizer.update_params(dense2)
+    optimizer.update_params(dense3)
+    optimizer.post_update_params()
