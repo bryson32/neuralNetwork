@@ -131,15 +131,14 @@ class Activation_Softmax:    #goes on outermot layer to provide the probabilitie
         probabilities = exp_values / np.sum(exp_values, axis = 1, keepdims=True)
         self.output = probabilities
     def backward(self, dvalues):
-        # Create uninitialized array
         self.dinputs = np.zeros_like(dvalues)
-        # For each sample, compute the Jacobian matrix
+        # For each sample, compute Jacobian matrix
         for index, (single_output, single_dvalues) in enumerate(zip(self.output, dvalues)):
-            # Flatten output
+            # Flatten
             single_output = single_output.reshape(-1, 1)
-            # Jacobian matrix of the softmax
+            # Jacobian matrix of softmax
             jacobian_matrix = np.diagflat(single_output) - np.dot(single_output, single_output.T)
-            # Calculate sample-wise gradient and store
+            # Calc gradient + store
             self.dinputs[index] = np.dot(jacobian_matrix, single_dvalues)
         
 class Loss:
