@@ -25,11 +25,30 @@ class Activation_ReLU:
     def forward(self, inputs):
         self.output = np.maximum(0, inputs)    
 
-class Activation_Softmax:
+class Activation_Softmax:    #goes on outermot layer to provide the probabilities
     def forward(self, inputs):
         exp_values = np.exp(inputs - np.max(inputs, axis = 1, keepdims=True))
         probabilities = exp_values / np.sum(exp_values, axis = 1, keepdims=True)
         self.output = probabilities
+        
+class Loss:
+    def calculate(self, output, y):
+        sample_losses = self.forward(output, y)
+        data_loss = np.mean(sample_losses)
+        return data_loss
+    
+class Loss_crossentropy(Loss):
+    def forward(self, y_predicted, y_true):
+        samples = len(y_predicted)
+        y_pred_clipped = np.clip(y_predicted, 1e-7, 1-1e-7)
+        
+        if len(y_true.shape) == 1:  #one hot encoded vectors
+            correct_confidences = y_pred_clipped[range(samples), y_true]
+        elif len(y_true.shape) == 2:  #scalar cclass values
+            correct_confidences = np.sum(y_pred_clipped*y_true, axis=1)
+        
+        neg_log_likelihoods = -np.log(correct_confidences)
+        return neg_log_likelihoods
         
 X, Y = spiral_data(100, 3)
 
@@ -46,3 +65,6 @@ dense2.forward(activation1.output)
 activation2.forward(dense2.output)
 
 print(activation2.output)
+loss_function = Loss_crossentropy()
+loss = loss_function.calculate(activation2.output, Y)
+print("Loss: ", loss)
