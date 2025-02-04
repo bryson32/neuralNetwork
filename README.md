@@ -1,3 +1,2 @@
 # neuralNetwork
-2 week project for fun
-Edit: Who knew you could code for 20 hours in 3 days
+2 week project for fun. neural net from scratch 0 ml frameworks just math and numpy
