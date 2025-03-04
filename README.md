@@ -42,17 +42,3 @@ The model trains for 10,000 epochs and prints the loss and accuracy every 1,000 
 3. Use Softmax for the output layer to produce class probabilities.
 4. Compute loss using categorical cross-entropy.
 5. Perform backpropagation to update weights using Adam optimizer.
-
-## Output Example
-```bash
-epoch: 0, loss: 1.098, accuracy: 0.333
-epoch: 1000, loss: 0.724, accuracy: 0.780
-epoch: 2000, loss: 0.561, accuracy: 0.860
-...
-epoch: 10000, loss: 0.352, accuracy: 0.940
-```
-
-## License
-```text
-This project is for educational purposes and is released under the MIT License.
-```
