@@ -1,6 +1,9 @@
 # Neural Network from Scratch
 
-This project implements a simple neural network from scratch using NumPy. The network is trained on a spiral dataset to classify points into three classes. It includes fundamental components such as dense layers, activation functions, an optimizer (Adam), and a loss function (categorical cross-entropy). Check out how I used what I learned in this project to build something more complex and meaningful here -> https://github.com/bryson32/DeepLearning-LipReader 
+This project implements a simple neural network from scratch using NumPy. The network is trained on a spiral dataset to classify points into three classes. It includes fundamental components such as dense layers, activation functions, an optimizer (Adam), and a loss function (categorical cross-entropy). 
+
+⬇️ Check out how I used what I learned in this project to build something more complex and meaningful here 
+https://github.com/bryson32/DeepLearning-LipReader 
 
 ## Features
 - Fully connected (dense) layers
